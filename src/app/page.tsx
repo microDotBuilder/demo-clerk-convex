@@ -1,8 +1,16 @@
 "use client";
 import { SignInButton, UserButton } from "@clerk/nextjs";
-import { Authenticated, Unauthenticated } from "convex/react";
+import {
+  Authenticated,
+  Unauthenticated,
+  useMutation,
+  useQuery,
+} from "convex/react";
+import { api } from "../../convex/_generated/api";
 
 export default function Home() {
+  const createDocument = useMutation(api.documents.createDocument);
+  const documents = useQuery(api.documents.getDocument);
   return (
     <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
       <Unauthenticated>
@@ -20,6 +28,13 @@ export default function Home() {
       <Authenticated>
         <UserButton />
         <h1 className="text-4xl font-bold">Welcome back!</h1>
+        <div
+          className="flex flex-col items-center justify-center gap-4 border-solid px-10 border-2 rounded-sm border-red-500 w-[4rem] hover:bg-purple-500 hover:border-purple-600 transition-colors"
+          onClick={() => createDocument({ title: "test" })}
+        >
+          test mutation
+        </div>
+        {documents && documents.map((item) => <div>{item.title}</div>)}
       </Authenticated>
     </div>
   );
