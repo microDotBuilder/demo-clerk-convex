@@ -17,6 +17,8 @@ import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { SubmitButton } from "./submit-button";
 
+export const MAX_UPLOAD_SIZE = 1024 * 1024 * 3; // 3MB
+
 export const formSchema = z.object({
   title: z
     .string()
@@ -26,7 +28,11 @@ export const formSchema = z.object({
     .max(100, {
       message: "Title is too long max 100 characters",
     }),
+  file: z.instanceof(File).refine((file) => {
+    return !file || file.size <= MAX_UPLOAD_SIZE;
+  }, "File size must be less than 3MB"),
 });
+
 export default function UploadDocumentForm({
   setOpen,
 }: {
@@ -39,10 +45,27 @@ export default function UploadDocumentForm({
     },
   });
   const createDocument = useMutation(api.documents.createDocument);
+  const uploadURL = useMutation(api.documents.generateUploadUrl);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     // await new Promise((resolve) => setTimeout(resolve, 2000));// Simulate API call
-    await createDocument({ title: values.title });
+    if (values.file.size > MAX_UPLOAD_SIZE) {
+      throw new Error("File Size is more then 3MB");
+    }
+    const uri = await uploadURL();
+    console.log(uri);
+    if (!values.file) return;
+    const result = await fetch(uri, {
+      method: "POST",
+      headers: { "Content-Type": values.file.type },
+      body: values.file,
+    });
+    const { storageId } = await result.json();
+
+    await createDocument({
+      title: values.title,
+      storageId,
+    });
     setOpen(false);
   }
 
@@ -57,6 +80,29 @@ export default function UploadDocumentForm({
               <FormLabel>Title:</FormLabel>
               <FormControl>
                 <Input placeholder="Title For Document.." {...field} />
+              </FormControl>
+
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="file"
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          render={({ field: { value, onChange, ...fieldProps } }) => (
+            <FormItem>
+              <FormLabel>Title:</FormLabel>
+              <FormControl>
+                <Input
+                  type="file"
+                  accept=".doc,.docx,.xml,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  {...fieldProps}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    onChange(file);
+                  }}
+                />
               </FormControl>
 
               <FormMessage />

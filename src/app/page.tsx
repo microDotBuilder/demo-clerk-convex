@@ -7,7 +7,7 @@ import { api } from "../../convex/_generated/api";
 import { UploadDocumentModel } from "@/components/ui/upload-document-model";
 
 export default function Home() {
-  const documents = useQuery(api.documents.getDocument);
+  const documents = useQuery(api.documents.getDocuments);
 
   return (
     <div className="p-24">

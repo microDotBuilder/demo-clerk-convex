@@ -1,9 +1,14 @@
 import { mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 
+export const generateUploadUrl = mutation(async (ctx) => {
+  return await ctx.storage.generateUploadUrl();
+});
+
 export const createDocument = mutation({
   args: {
     title: v.string(),
+    storageId: v.id("_storage"),
   },
   returns: v.string(),
   handler: async (ctx, args) => {
@@ -16,12 +21,13 @@ export const createDocument = mutation({
     const id = await ctx.db.insert("documents", {
       title: args.title,
       tokenIdentifier: userId,
+      storageId: args.storageId,
     });
     return id;
   },
 });
 
-export const getDocument = query({
+export const getDocuments = query({
   async handler(ctx) {
     const userId = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
 
@@ -32,5 +38,25 @@ export const getDocument = query({
       .query("documents")
       .withIndex("by_tokenIdentifier", (q) => q.eq("tokenIdentifier", userId))
       .collect();
+  },
+});
+
+export const getSingleDocument = query({
+  args: {
+    documentId: v.id("documents"),
+  },
+  async handler(ctx, args) {
+    const userId = (await ctx.auth.getUserIdentity())?.tokenIdentifier;
+
+    if (!userId) {
+      return null;
+    }
+    const document = await ctx.db.get(args.documentId);
+    if (!document) return null;
+    if (document.tokenIdentifier !== userId) return null;
+    return {
+      ...document,
+      documentURL: await ctx.storage.getUrl(document.storageId),
+    };
   },
 });
